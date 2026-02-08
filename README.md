@@ -18,21 +18,21 @@ This can prevent overfitting to the often small annotated dataset and makes use 
 
 ### Requirements
 
-To run the code, the following Python packages are needed. We recommend the GPU version for Tensorflow due to the long running times of this model. You can install them easily using ``pip install -r requirements.txt`` after saving the below list to a text file.
+- Python 3.11+
+- TensorFlow 2.x (GPU version recommended due to long running times)
+- ffmpeg must be installed and on your PATH for mp3 support
 
-```
-tensorflow-gpu>=1.2.0  
-sacred>=0.7.0  
-audioread>=2.1.5
-imageio>=2.2.0
-librosa>=0.5.1
-lxml>=3.8.0
-mir_eval>=0.4
-scikits.audiolab>=0.11.0
-soundfile>=0.9.0
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
 ```
 
-Furthermore, ffmpeg needs to be installed and in your path in case you want to read in mp3 files directly.
+Or install as a package in development mode:
+
+```bash
+pip install -e .
+```
 
 ### Dataset preparation
 
