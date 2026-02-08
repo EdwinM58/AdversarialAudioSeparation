@@ -2,8 +2,8 @@
 
 import numpy as np
 
-import multistreamcache
-import multistreamworkers
+from Input import multistreamcache
+from Input import multistreamworkers
 import Utils
 
 
@@ -123,7 +123,7 @@ class BatchGen_Paired:
         acc = np.zeros(self.options["output_shape"], dtype=np.float32)
         voice = np.zeros(self.options["output_shape"], dtype=np.float32)
 
-        time_padding = (self.options["input_shape"][2] - self.options["output_shape"][2])/2 # Amount of temporal context in the input on each side
+        time_padding = (self.options["input_shape"][2] - self.options["output_shape"][2])//2 # Amount of temporal context in the input on each side
 
         # block calls to np.random.randint are faster
         idx_cache_items = np.random.randint(0, self.options["cache_size"], size=self.options["batch_size"])

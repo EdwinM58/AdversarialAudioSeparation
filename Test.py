@@ -1,6 +1,8 @@
 import pickle
 import numpy as np
 import tensorflow as tf
+import tensorflow.compat.v1 as tf1
+tf1.disable_v2_behavior()
 import librosa
 
 import Utils
@@ -31,7 +33,7 @@ def bss_evaluate(model_config, dataset, load_model):
     :return: Dict containing evaluation metrics
     '''
     # Determine input and output shapes, if we use U-net as separator
-    freq_bins = model_config["num_fft"] / 2 + 1  # Make even number of freq bins
+    freq_bins = model_config["num_fft"] // 2 + 1  # Make even number of freq bins
     disc_input_shape = [1, freq_bins - 1, model_config["num_frames"],1]  # Shape of discriminator input
 
     separator_class = Models.Unet.Unet(model_config["num_layers"])
@@ -52,13 +54,13 @@ def bss_evaluate(model_config, dataset, load_model):
     separator_acc, separator_voice = Input.denorm(separator_acc_norm), Input.denorm(separator_voice_norm)
 
     # Start session and queue input threads
-    sess = tf.Session()
-    sess.run(tf.global_variables_initializer())
+    sess = tf1.Session()
+    sess.run(tf1.global_variables_initializer())
 
     # Load model
     # Load pretrained model to continue training, if we are supposed to
-    restorer = tf.train.Saver(None, write_version=tf.train.SaverDef.V2)
-    print("Num of variables" + str(len(tf.global_variables())))
+    restorer = tf1.train.Saver(None, write_version=tf1.train.SaverDef.V2)
+    print("Num of variables" + str(len(tf1.global_variables())))
     restorer.restore(sess, load_model)
     print('Pre-trained model restored for testing')
 
@@ -68,13 +70,13 @@ def bss_evaluate(model_config, dataset, load_model):
     for multitrack in dataset:
         filename = multitrack[0].path
         print("Evaluating file " + filename)
-        if filename.__contains__("DSD100"):
+        if "DSD100" in filename:
             db = "DSD100"
-        elif filename.__contains__("Kala"):
+        elif "Kala" in filename:
             db = "IKala"
-        elif filename.__contains__("ccmixter"):
+        elif "ccmixter" in filename:
             db = "CCMixter"
-        elif filename.__contains__("MedleyDB"):
+        elif "MedleyDB" in filename:
             db = "MedleyDB"
         song_info = {"Title" : filename, "Database" : db}
 
@@ -93,7 +95,7 @@ def bss_evaluate(model_config, dataset, load_model):
         output_time_frames = sep_output_shape[2]
 
         # Pad mixture spectrogram across time at beginning and end so that neural network can make prediction at the beginning and end of signal
-        pad_time_frames = (input_time_frames - output_time_frames) / 2
+        pad_time_frames = (input_time_frames - output_time_frames) // 2
         mix_mag = np.pad(mix_mag, [(0,0), (pad_time_frames, pad_time_frames)], mode="constant", constant_values=0.0)
 
         # Iterate over mixture magnitudes, fetch network prediction
@@ -173,6 +175,6 @@ def bss_evaluate(model_config, dataset, load_model):
 
     # Close session, clear computational graph
     sess.close()
-    tf.reset_default_graph()
+    tf1.reset_default_graph()
 
     return song_scores

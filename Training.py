@@ -1,5 +1,7 @@
 from sacred import Experiment
 import tensorflow as tf
+import tensorflow.compat.v1 as tf1
+tf1.disable_v2_behavior()
 import threading
 import numpy as np
 import os
@@ -10,7 +12,7 @@ from Input import batchgenerators as batchgen
 import Models.WGAN_Critic
 import Models.Unet
 import Utils
-import cPickle as pickle
+import pickle
 import Test
 
 ex = Experiment('Adversarial_Source_Separation')
@@ -45,7 +47,7 @@ def cfg():
 @ex.capture
 def test(model_config, audio_list, model_folder, load_model):
     # Determine input and output shapes, if we use U-net as separator
-    freq_bins = model_config["num_fft"] / 2 + 1  # Make even number of freq bins
+    freq_bins = model_config["num_fft"] // 2 + 1  # Make even number of freq bins
     disc_input_shape = [model_config["batch_size"], freq_bins-1, model_config["num_frames"],1]  # Shape of discriminator input
     separator_class = Models.Unet.Unet(model_config["num_layers"])
     sep_input_shape, sep_output_shape = separator_class.getUnetPadding(np.array(disc_input_shape))
@@ -67,14 +69,14 @@ def test(model_config, audio_list, model_folder, load_model):
     # Supervised objective
     sup_separator_loss = tf.reduce_mean(tf.square(separator_voice_norm - voice_norm)) + tf.reduce_mean(tf.square(separator_acc_norm - acc_norm))
 
-    tf.summary.scalar("sup_sep_loss", sup_separator_loss, collections=['sup', 'unsup'])
+    tf1.summary.scalar("sup_sep_loss", sup_separator_loss, collections=['sup', 'unsup'])
 
-    global_step = tf.get_variable('global_step', [], initializer=tf.constant_initializer(0), trainable=False, dtype=tf.int64)
+    global_step = tf1.get_variable('global_step', [], initializer=tf1.constant_initializer(0), trainable=False, dtype=tf.int64)
 
     # Start session and queue input threads
-    sess = tf.Session()
-    sess.run(tf.global_variables_initializer())
-    writer = tf.summary.FileWriter(model_config["log_dir"] + os.path.sep +  model_folder, graph=sess.graph)
+    sess = tf1.Session()
+    sess.run(tf1.global_variables_initializer())
+    writer = tf1.summary.FileWriter(model_config["log_dir"] + os.path.sep +  model_folder, graph=sess.graph)
 
     thread = threading.Thread(target=Input.load_and_enqueue, args=(sess, model_config, queue, enqueue_op, input_ph, audio_list))
     thread.deamon = True
@@ -82,8 +84,8 @@ def test(model_config, audio_list, model_folder, load_model):
 
     # CHECKPOINTING
     # Load pretrained model to test
-    restorer = tf.train.Saver(tf.global_variables(), write_version=tf.train.SaverDef.V2)
-    print("Num of variables" + str(len(tf.global_variables())))
+    restorer = tf1.train.Saver(tf1.global_variables(), write_version=tf1.train.SaverDef.V2)
+    print("Num of variables" + str(len(tf1.global_variables())))
     restorer.restore(sess, load_model)
     print('Pre-trained model restored for testing')
 
@@ -104,7 +106,7 @@ def test(model_config, audio_list, model_folder, load_model):
             run = False
 
     mean_mse_loss = total_loss / float(batches)
-    summary = tf.Summary(value=[tf.Summary.Value(tag="test_loss", simple_value=mean_mse_loss)])
+    summary = tf1.Summary(value=[tf.Summary.Value(tag="test_loss", simple_value=mean_mse_loss)])
     writer.add_summary(summary, global_step=_global_step)
 
     writer.flush()
@@ -116,7 +118,7 @@ def test(model_config, audio_list, model_folder, load_model):
 
     # Close session, clear computational graph
     sess.close()
-    tf.reset_default_graph()
+    tf1.reset_default_graph()
 
     return mean_mse_loss
 
@@ -124,7 +126,7 @@ def test(model_config, audio_list, model_folder, load_model):
 @ex.capture
 def train(model_config, sup_dataset, model_folder, unsup_dataset=None, load_model=None):
     # Determine input and output shapes
-    freq_bins = model_config["num_fft"] / 2 + 1  # Make even number of freq bins
+    freq_bins = model_config["num_fft"] // 2 + 1  # Make even number of freq bins
     disc_input_shape = [model_config["batch_size"], freq_bins - 1, model_config["num_frames"],1]  # Shape of discriminator input
 
     separator_class = Models.Unet.Unet(model_config["num_layers"])
@@ -187,20 +189,20 @@ def train(model_config, sup_dataset, model_folder, unsup_dataset=None, load_mode
     mask_loss = tf.reduce_mean(tf.square(mix - separator_acc - separator_voice))
 
     # SUMMARIES FOR INPUT AND SEPARATOR
-    tf.summary.scalar("mask_loss", mask_loss, collections=["sup", "unsup"])
+    tf1.summary.scalar("mask_loss", mask_loss, collections=["sup", "unsup"])
     if unsup_dataset != None:
-        tf.summary.scalar("mask_loss_u", mask_loss_u, collections=["unsup"])
-        tf.summary.scalar("acc_norm_mean_u", tf.reduce_mean(acc_norm_u), collections=["acc_disc"])
-        tf.summary.scalar("voice_norm_mean_u", tf.reduce_mean(voice_norm_u), collections=["voice_disc"])
-        tf.summary.scalar("acc_sep_norm_mean_u", tf.reduce_mean(separator_acc_norm_u), collections=["acc_disc"])
-        tf.summary.scalar("voice_sep_norm_mean_u", tf.reduce_mean(separator_voice_norm_u), collections=["voice_disc"])
-    tf.summary.scalar("acc_norm_mean", tf.reduce_mean(acc_norm), collections=['sup'])
-    tf.summary.scalar("voice_norm_mean", tf.reduce_mean(voice_norm), collections=['sup'])
-    tf.summary.scalar("acc_sep_norm_mean", tf.reduce_mean(separator_acc_norm), collections=['sup'])
-    tf.summary.scalar("voice_sep_norm_mean", tf.reduce_mean(separator_voice_norm), collections=['sup'])
+        tf1.summary.scalar("mask_loss_u", mask_loss_u, collections=["unsup"])
+        tf1.summary.scalar("acc_norm_mean_u", tf.reduce_mean(acc_norm_u), collections=["acc_disc"])
+        tf1.summary.scalar("voice_norm_mean_u", tf.reduce_mean(voice_norm_u), collections=["voice_disc"])
+        tf1.summary.scalar("acc_sep_norm_mean_u", tf.reduce_mean(separator_acc_norm_u), collections=["acc_disc"])
+        tf1.summary.scalar("voice_sep_norm_mean_u", tf.reduce_mean(separator_voice_norm_u), collections=["voice_disc"])
+    tf1.summary.scalar("acc_norm_mean", tf.reduce_mean(acc_norm), collections=['sup'])
+    tf1.summary.scalar("voice_norm_mean", tf.reduce_mean(voice_norm), collections=['sup'])
+    tf1.summary.scalar("acc_sep_norm_mean", tf.reduce_mean(separator_acc_norm), collections=['sup'])
+    tf1.summary.scalar("voice_sep_norm_mean", tf.reduce_mean(separator_voice_norm), collections=['sup'])
 
-    tf.summary.image("sep_acc_norm", separator_acc_norm, collections=["sup", "unsup"])
-    tf.summary.image("sep_voice_norm", separator_voice_norm, collections=["sup", "unsup"])
+    tf1.summary.image("sep_acc_norm", separator_acc_norm, collections=["sup", "unsup"])
+    tf1.summary.image("sep_voice_norm", separator_voice_norm, collections=["sup", "unsup"])
 
     # BUILD DISCRIMINATORS, if unsupervised training
     unsup_separator_loss = 0
@@ -229,15 +231,15 @@ def train(model_config, sup_dataset, model_folder, unsup_dataset=None, load_mode
     separator_loss = sup_separator_loss + unsup_separator_loss # Total separator loss: Supervised + unsupervised loss
 
     # TRAINING CONTROL VARIABLES
-    global_step = tf.get_variable('global_step', [],
-                                  initializer=tf.constant_initializer(0), trainable=False, dtype=tf.int64)
-    increment_global_step = tf.assign(global_step, global_step + 1)
-    disc_lr = tf.get_variable('disc_lr', [],
-                              initializer=tf.constant_initializer(model_config["init_disc_lr"], dtype=tf.float32), trainable=False)
-    unsup_sep_lr = tf.get_variable('unsup_sep_lr', [],
-                             initializer=tf.constant_initializer(model_config["init_unsup_sep_lr"], dtype=tf.float32), trainable=False)
-    sup_sep_lr = tf.get_variable('sup_sep_lr', [],
-                             initializer=tf.constant_initializer(model_config["init_sup_sep_lr"], dtype=tf.float32),
+    global_step = tf1.get_variable('global_step', [],
+                                  initializer=tf1.constant_initializer(0), trainable=False, dtype=tf.int64)
+    increment_global_step = tf1.assign(global_step, global_step + 1)
+    disc_lr = tf1.get_variable('disc_lr', [],
+                              initializer=tf1.constant_initializer(model_config["init_disc_lr"], dtype=tf.float32), trainable=False)
+    unsup_sep_lr = tf1.get_variable('unsup_sep_lr', [],
+                             initializer=tf1.constant_initializer(model_config["init_unsup_sep_lr"], dtype=tf.float32), trainable=False)
+    sup_sep_lr = tf1.get_variable('sup_sep_lr', [],
+                             initializer=tf1.constant_initializer(model_config["init_sup_sep_lr"], dtype=tf.float32),
                              trainable=False)
 
     # Set up optimizers
@@ -249,42 +251,42 @@ def train(model_config, sup_dataset, model_folder, unsup_dataset=None, load_mode
     print("Acc_Disc_Vars: " + str(Utils.getNumParams(acc_disc_vars)))
 
     if unsup_dataset != None:
-        with tf.variable_scope("voice_disc_solver"):
-            voice_disc_solver = tf.train.AdamOptimizer(learning_rate=disc_lr).minimize(voice_disc_loss, var_list=voice_disc_vars, colocate_gradients_with_ops=True)
-        with tf.variable_scope("acc_disc_solver"):
-            acc_disc_solver = tf.train.AdamOptimizer(learning_rate=disc_lr).minimize(acc_disc_loss, var_list=acc_disc_vars, colocate_gradients_with_ops=True)
-        with tf.variable_scope("unsup_separator_solver"):
-            unsup_separator_solver = tf.train.AdamOptimizer(learning_rate=unsup_sep_lr).minimize(
+        with tf1.variable_scope("voice_disc_solver"):
+            voice_disc_solver = tf1.train.AdamOptimizer(learning_rate=disc_lr).minimize(voice_disc_loss, var_list=voice_disc_vars, colocate_gradients_with_ops=True)
+        with tf1.variable_scope("acc_disc_solver"):
+            acc_disc_solver = tf1.train.AdamOptimizer(learning_rate=disc_lr).minimize(acc_disc_loss, var_list=acc_disc_vars, colocate_gradients_with_ops=True)
+        with tf1.variable_scope("unsup_separator_solver"):
+            unsup_separator_solver = tf1.train.AdamOptimizer(learning_rate=unsup_sep_lr).minimize(
                 separator_loss, var_list=separator_vars, colocate_gradients_with_ops=True)
     else:
-        with tf.variable_scope("separator_solver"):
-            sup_separator_solver = (tf.train.AdamOptimizer(learning_rate=sup_sep_lr).minimize(sup_separator_loss, var_list=separator_vars, colocate_gradients_with_ops=True))
+        with tf1.variable_scope("separator_solver"):
+            sup_separator_solver = (tf1.train.AdamOptimizer(learning_rate=sup_sep_lr).minimize(sup_separator_loss, var_list=separator_vars, colocate_gradients_with_ops=True))
 
     # SUMMARIES FOR DISCRIMINATORS AND LOSSES
-    acc_disc_summaries = tf.summary.merge_all(key="acc_disc")
-    voice_disc_summaries = tf.summary.merge_all(key="voice_disc")
-    tf.summary.scalar("sup_sep_loss", sup_separator_loss, collections=['sup', "unsup"])
-    tf.summary.scalar("unsup_sep_loss", unsup_separator_loss, collections=['unsup'])
-    tf.summary.scalar("sep_loss", separator_loss, collections=["sup", "unsup"])
-    sup_summaries = tf.summary.merge_all(key='sup')
-    unsup_summaries = tf.summary.merge_all(key='unsup')
+    acc_disc_summaries = tf1.summary.merge_all(key="acc_disc")
+    voice_disc_summaries = tf1.summary.merge_all(key="voice_disc")
+    tf1.summary.scalar("sup_sep_loss", sup_separator_loss, collections=['sup', "unsup"])
+    tf1.summary.scalar("unsup_sep_loss", unsup_separator_loss, collections=['unsup'])
+    tf1.summary.scalar("sep_loss", separator_loss, collections=["sup", "unsup"])
+    sup_summaries = tf1.summary.merge_all(key='sup')
+    unsup_summaries = tf1.summary.merge_all(key='unsup')
 
     # Start session
-    config = tf.ConfigProto()
+    config = tf1.ConfigProto()
     config.gpu_options.allow_growth=True
-    sess = tf.Session(config=config)
-    sess.run(tf.global_variables_initializer())
-    writer = tf.summary.FileWriter(model_config["log_dir"] + os.path.sep + model_folder, graph=sess.graph)
+    sess = tf1.Session(config=config)
+    sess.run(tf1.global_variables_initializer())
+    writer = tf1.summary.FileWriter(model_config["log_dir"] + os.path.sep + model_folder, graph=sess.graph)
 
     # CHECKPOINTING
     # Load pretrained model to continue training, if we are supposed to
     if load_model != None:
-        restorer = tf.train.Saver(tf.global_variables(), write_version=tf.train.SaverDef.V2)
-        print("Num of variables" + str(len(tf.global_variables())))
+        restorer = tf1.train.Saver(tf1.global_variables(), write_version=tf1.train.SaverDef.V2)
+        print("Num of variables" + str(len(tf1.global_variables())))
         restorer.restore(sess, load_model)
         print('Pre-trained model restored from file ' + load_model)
 
-    saver = tf.train.Saver(tf.global_variables(), write_version=tf.train.SaverDef.V2)
+    saver = tf1.train.Saver(tf1.global_variables(), write_version=tf1.train.SaverDef.V2)
 
 
     # Start training loop
@@ -357,7 +359,7 @@ def train(model_config, sup_dataset, model_folder, unsup_dataset=None, load_mode
     writer.flush()
     writer.close()
     sess.close()
-    tf.reset_default_graph()
+    tf1.reset_default_graph()
 
     return save_path
 
@@ -403,7 +405,7 @@ def optimise(experiment_id, dataset, supervised):
 def dsd_100_experiment(model_config):
     # Set up data input
     if os.path.exists('dataset.pkl'):
-        with open('dataset.pkl', 'r') as file:
+        with open('dataset.pkl', 'rb') as file:
             dataset = pickle.load(file)
         print("Loaded dataset from pickle!")
     else:
@@ -452,9 +454,9 @@ _       '''
         ### ENTRIES train_sup, valid and test, RESPECTIVELY.
 
         # Zip up all paired dataset partitions so we have (mixture, accompaniment, voice) tuples
-        dataset["train_sup"] = zip(dataset["train_sup"][0], dataset["train_sup"][1], dataset["train_sup"][2])
-        dataset["valid"] = zip(dataset["valid"][0], dataset["valid"][1], dataset["valid"][2])
-        dataset["test"] = zip(dataset["test"][0], dataset["test"][1], dataset["test"][2])
+        dataset["train_sup"] = list(zip(dataset["train_sup"][0], dataset["train_sup"][1], dataset["train_sup"][2]))
+        dataset["valid"] = list(zip(dataset["valid"][0], dataset["valid"][1], dataset["valid"][2]))
+        dataset["test"] = list(zip(dataset["test"][0], dataset["test"][1], dataset["test"][2]))
 
         with open('dataset.pkl', 'wb') as file:
             pickle.dump(dataset, file)

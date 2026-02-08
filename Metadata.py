@@ -1,6 +1,5 @@
 import os, re, subprocess
 from soundfile import SoundFile
-import scikits.audiolab
 
 _find_sampling_rate = re.compile('.* ([0-9:]+) Hz,', re.MULTILINE )
 _find_channels = re.compile(".*Hz,( .*?),", re.MULTILINE)
@@ -14,16 +13,20 @@ def timestamp_to_seconds( ms ):
 
 def seconds_to_min_sec( secs ):
     "Return a minutes:seconds string representation of the given number of seconds."
-    mins = int(secs) / 60
+    mins = int(secs) // 60
     secs = int(secs - (mins * 60))
-    return "%d:%02d" % (mins, secs)
+    return f"{mins}:{secs:02d}"
 
 def get_mp3_metadata(audio_path):
     "Determine length of tracks listed in the given input files (e.g. playlists)."
-    ffmpeg = subprocess.check_output(
-      'ffmpeg -i "%s"; exit 0' % audio_path,
-      shell = True,
-      stderr = subprocess.STDOUT )
+    try:
+        ffmpeg = subprocess.check_output(
+          ['ffmpeg', '-i', audio_path],
+          stderr=subprocess.STDOUT )
+    except subprocess.CalledProcessError as e:
+        ffmpeg = e.output
+
+    ffmpeg = ffmpeg.decode('utf-8', errors='replace')
 
     # Get sampling rate
     match = _find_sampling_rate.search( ffmpeg )
@@ -34,7 +37,7 @@ def get_mp3_metadata(audio_path):
     match = _find_channels.search( ffmpeg )
     assert(match)
     channels = match.group( 1 )
-    channels = (2 if channels.__contains__("stereo") else 1)
+    channels = (2 if "stereo" in channels else 1)
 
     # Get duration
     match = _find_duration.search( ffmpeg )
@@ -47,16 +50,17 @@ def get_mp3_metadata(audio_path):
 def get_audio_metadata(audioPath, sphereType=False):
     '''
     Returns sampling rate, number of channels and duration of an audio file
-    :param audioPath: 
-    :param sphereType: 
-    :return: 
+    :param audioPath:
+    :param sphereType:
+    :return:
     '''
     ext = os.path.splitext(audioPath)[1][1:].lower()
-    if ext=="aiff" or sphereType:  # SPHERE headers for the TIMIT dataset
-        audio = scikits.audiolab.Sndfile(audioPath)
-        sr = audio.samplerate
-        channels = audio.channels
-        duration = float(audio.nframes) / float(audio.samplerate)
+    if ext=="aiff" or sphereType:  # AIFF/SPHERE headers
+        snd_file = SoundFile(audioPath, mode='r')
+        inf = snd_file._info
+        sr = inf.samplerate
+        channels = inf.channels
+        duration = float(inf.frames) / float(inf.samplerate)
     elif ext=="mp3": # Use ffmpeg/ffprobe
         sr, channels, duration = get_mp3_metadata(audioPath)
     else:

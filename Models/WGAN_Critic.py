@@ -1,4 +1,6 @@
 import tensorflow as tf
+import tensorflow.compat.v1 as tf1
+tf1.disable_v2_behavior()
 
 from Utils import LeakyReLU
 
@@ -28,14 +30,14 @@ def create_critic(model_config, real_input, fake_input, scope, network_func):
     wasserstein_dist = tf.reduce_mean(disc_real) - tf.reduce_mean(disc_fake)
     disc_loss = -wasserstein_dist + model_config["lam"] * grad_pen
 
-    tf.summary.scalar(scope + "_disc_loss", disc_loss, collections=[scope])
-    tf.summary.scalar(scope + "_disc_real", tf.reduce_mean(disc_real), collections=[scope])
-    tf.summary.scalar(scope + "_disc_fake", tf.reduce_mean(disc_fake), collections=[scope])
-    tf.summary.scalar(scope + "_wasserstein_dist", wasserstein_dist, collections=[scope])
-    tf.summary.scalar(scope + "_grad_pen", grad_pen, collections=[scope])
+    tf1.summary.scalar(scope + "_disc_loss", disc_loss, collections=[scope])
+    tf1.summary.scalar(scope + "_disc_real", tf.reduce_mean(disc_real), collections=[scope])
+    tf1.summary.scalar(scope + "_disc_fake", tf.reduce_mean(disc_fake), collections=[scope])
+    tf1.summary.scalar(scope + "_wasserstein_dist", wasserstein_dist, collections=[scope])
+    tf1.summary.scalar(scope + "_grad_pen", grad_pen, collections=[scope])
 
-    tf.summary.image(scope + "_real_input", real_input, collections=[scope])
-    tf.summary.image(scope + "_fake_input", fake_input, collections=[scope])
+    tf1.summary.image(scope + "_real_input", real_input, collections=[scope])
+    tf1.summary.image(scope + "_fake_input", fake_input, collections=[scope])
 
     return disc_loss, disc_real, disc_fake, grad_pen, wasserstein_dist
 
@@ -47,20 +49,20 @@ def dcgan(input, name, reuse=True):
     :param reuse: Whether to create new parameter variables or reuse existing ones
     :return: DCGAN output in the form of unnormalised logits (4D tensor)
     '''
-    with tf.variable_scope(name, reuse=reuse):
+    with tf1.variable_scope(name, reuse=reuse):
         filters = 32
 
         # Convolve with stride 2 until one of the dimensions is 4 or less
-        conv = tf.layers.conv2d(input, filters, [4,4], strides=[2,2], padding='same', activation=LeakyReLU, use_bias=True)
+        conv = tf1.layers.conv2d(input, filters, [4,4], strides=[2,2], padding='same', activation=LeakyReLU, use_bias=True)
         while conv.get_shape().as_list()[1] > 4 and conv.get_shape().as_list()[2] > 4:
             filters *= 2
-            conv = tf.layers.conv2d(conv, filters, [4,4], strides=[2,2], padding='same', activation=LeakyReLU, use_bias=True)
+            conv = tf1.layers.conv2d(conv, filters, [4,4], strides=[2,2], padding='same', activation=LeakyReLU, use_bias=True)
 
         # Convolve with stride 2 only along frequency axis until frequency axis is length 4 or less
         while conv.get_shape().as_list()[1] > 4:
-            conv = tf.layers.conv2d(conv, filters, [4,2], strides=[2,1], padding='same', activation=LeakyReLU, use_bias=True)
+            conv = tf1.layers.conv2d(conv, filters, [4,2], strides=[2,1], padding='same', activation=LeakyReLU, use_bias=True)
 
-        conv = tf.contrib.layers.flatten(conv)
-        hidden = tf.layers.dense(conv, 32, activation=LeakyReLU, use_bias=True)
-        logits = tf.layers.dense(hidden, 1, activation=None, use_bias=False)
+        conv = tf1.layers.flatten(conv)
+        hidden = tf1.layers.dense(conv, 32, activation=LeakyReLU, use_bias=True)
+        logits = tf1.layers.dense(hidden, 1, activation=None, use_bias=False)
         return logits

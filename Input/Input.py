@@ -1,10 +1,13 @@
 import tensorflow as tf
+import tensorflow.compat.v1 as tf1
+tf1.disable_v2_behavior()
 import numpy as np
 import librosa
 import os.path
 
 import Metadata
 import subprocess
+import soundfile as sf
 from soundfile import SoundFile
 import Utils
 
@@ -16,9 +19,9 @@ def get_multitrack_placeholders(shape, input_shape=None, name=""):
     '''
     if input_shape is None:
         input_shape = shape
-    m = tf.placeholder(dtype=tf.float32, shape=input_shape, name="mix_input" + name)
-    a = tf.placeholder(dtype=tf.float32, shape=shape, name="acc_input" + name)
-    v = tf.placeholder(dtype=tf.float32, shape=shape, name="voice_input" + name)
+    m = tf1.placeholder(dtype=tf.float32, shape=input_shape, name="mix_input" + name)
+    a = tf1.placeholder(dtype=tf.float32, shape=shape, name="acc_input" + name)
+    v = tf1.placeholder(dtype=tf.float32, shape=shape, name="voice_input" + name)
     return m,a,v
 
 def get_multitrack_input(shape, batch_size, name="", input_shape=None):
@@ -37,7 +40,7 @@ def get_multitrack_input(shape, batch_size, name="", input_shape=None):
 
     if input_shape is None:
         input_shape = shape
-    queue = tf.RandomShuffleQueue(capacity, min_after_dequeue, [tf.float32, tf.float32, tf.float32], [input_shape, shape, shape])
+    queue = tf1.RandomShuffleQueue(capacity, min_after_dequeue, [tf.float32, tf.float32, tf.float32], [input_shape, shape, shape])
     input_batch = queue.dequeue_many(batch_size, name="input_batch" + name)
 
     return [m,a,v], queue, input_batch
@@ -54,7 +57,7 @@ def crop(tensor, target_shape):
     assert(diff[0] == 0 and diff[3] == 0) # Only two axes can differ
     assert np.sum(diff % 2) == 0 # We have to have the same amount of entries to crop on each side
     assert np.min(diff) >= 0 # Only positive difference allowed
-    diff /= 2
+    diff //= 2
 
     output = tensor
     if diff[1] > 0:
@@ -77,7 +80,7 @@ def load_and_enqueue(sess, model_config, queue, enqueue_op, input_ph, song_list)
 
     input_frames = input_ph[0].get_shape().as_list()[1]
     output_frames = input_ph[1].get_shape().as_list()[1]
-    padding = (input_frames - output_frames)/2
+    padding = (input_frames - output_frames)//2
 
     for [mix, acc, voice] in song_list:
         try:
@@ -214,7 +217,7 @@ def readAudio(audio_path, offset=0.0, duration=None, mono=True, sample_rate=None
         num_reads = 0
         while True:
             output = process.stdout.read(4096)
-            if output == '' and process.poll() is not None:
+            if output == b'' and process.poll() is not None:
                 break
             if output:
                 audio.append(librosa.util.buf_to_float(output, dtype=np.float32))
@@ -312,7 +315,7 @@ def audioFileToSpectrogram(audioIn, fftWindowSize=1024, hopSize=512, offset=0.0,
     if isinstance(audioIn, str): # Read from file
         if buffer and os.path.exists(audioIn + ".npy"): # Do we need to load a previous numpy buffer file?
             assert(offset == 0.0 and duration is None) # We can only load the whole buffer file
-            with open(audioIn + ".npy", 'r') as file: # Try loading
+            with open(audioIn + ".npy", 'rb') as file: # Try loading
                 try:
                     [magnitude, phase] = np.load(file)
                     return magnitude, phase
@@ -355,7 +358,7 @@ def add_audio(audio_list, path_postfix):
             print("WARNING: Mixing tracks together caused the result to have sample values outside of [-1,1]. Clipping those values")
             audio = np.minimum(np.maximum(audio, -1.0), 1.0)
 
-        librosa.output.write_wav(save_path, audio, sr)
+        sf.write(save_path, audio.T if audio.ndim > 1 else audio, sr)
     return save_path
 
 def norm(magnitude):

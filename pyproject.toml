@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "adversarial-audio-separation"
+version = "2.0.0"
+requires-python = ">=3.11"
+dependencies = [
+    "tensorflow>=2.15.0,<3.0.0",
+    "numpy>=1.24.0,<2.0.0",
+    "scipy>=1.11.0",
+    "librosa>=0.10.0",
+    "soundfile>=0.12.0",
+    "lxml>=4.9.0",
+    "mir-eval>=0.7",
+    "sacred>=0.8.4",
+]
+
+[project.optional-dependencies]
+dev = ["ruff>=0.1.0", "pytest>=7.4.0"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+select = ["E", "F", "I", "W", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

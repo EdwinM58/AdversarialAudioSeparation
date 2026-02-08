@@ -1,18 +1,20 @@
 import tensorflow as tf
+import tensorflow.compat.v1 as tf1
+tf1.disable_v2_behavior()
 import numpy as np
 from scipy.signal import resample_poly
-from fractions import gcd
+from math import gcd
 
 def resample(audio, orig_sr, new_sr):
     orig_dtype = audio.dtype
     factor = gcd(orig_sr, new_sr)
-    down = orig_sr / factor
-    up = new_sr / factor
+    down = orig_sr // factor
+    up = new_sr // factor
     audio = resample_poly(audio, up, down).astype(orig_dtype)
     return audio
 
 def getTrainableVariables(tag=""):
-    return [v for v in tf.trainable_variables() if tag in v.name]
+    return [v for v in tf1.trainable_variables() if tag in v.name]
 
 def getNumParams(tensors):
     return np.sum([np.prod(t.get_shape().as_list()) for t in tensors])
@@ -60,7 +62,7 @@ def pad_freqs(tensor, target_shape):
 
     diff = target_freqs - input_freqs
     if diff % 2 == 0:
-        pad = [(diff/2, diff/2)]
+        pad = [(diff//2, diff//2)]
     else:
         pad = [(diff//2, diff//2 + 1)] # Add extra frequency bin at the end
 

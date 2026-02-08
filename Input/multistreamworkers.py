@@ -1,5 +1,5 @@
 import numpy as np
-import Input
+from Input import Input
 from Sample import Sample
 
 class MultistreamWorker_GetSpectrogram:
@@ -37,7 +37,7 @@ class MultistreamWorker_GetSpectrogram:
                     communication_queue.put(Input.random_amplify(TF_rep))
 
                 elif isinstance(item, float): # This means the track is a (not as file existant) silence track so we insert a zero spectrogram
-                    TF_rep = np.zeros((n_fft / 2 + 1, duration_frames), dtype=np.float32)
+                    TF_rep = np.zeros((n_fft // 2 + 1, duration_frames), dtype=np.float32)
                     TF_rep = np.ndarray.astype(TF_rep, np.float32)  # Cast to float32
                     communication_queue.put(Input.random_amplify(TF_rep))
                 else:
@@ -59,7 +59,7 @@ class MultistreamWorker_GetSpectrogram:
                             #mag = mag[:, :options["output_shape"][2]]
                         else:
                             assert(isinstance(file, float)) # This source is silent in this track
-                            padding_frames = (options["input_shape"][2] - options["output_shape"][ 2]) / 2  # Number of spectrogram frames to insert context in each direction
+                            padding_frames = (options["input_shape"][2] - options["output_shape"][ 2]) // 2  # Number of spectrogram frames to insert context in each direction
                             source_shape = [mix_mag.shape[0], mix_mag.shape[1] - padding_frames*2]
                             mag = np.zeros(source_shape, dtype=np.float32) # Therefore insert zeros
                         sample.append(mag)

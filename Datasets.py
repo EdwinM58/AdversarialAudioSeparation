@@ -2,6 +2,7 @@ import numpy as np
 from lxml import etree
 import os.path
 import librosa
+import soundfile as sf
 
 import Input.Input
 from Sample import Sample
@@ -31,7 +32,7 @@ def subtract_audio(mix_list, instrument_list):
         if not (np.min(new_audio) >= -1.0 and np.max(new_audio) <= 1.0):
             print("Warning: Audio for mix " + str(new_audio_path) + " exceeds [-1,1] float range!")
 
-        librosa.output.write_wav(new_audio_path, new_audio, mix_sr) #TODO switch to compressed writing
+        sf.write(new_audio_path, new_audio.T if new_audio.ndim > 1 else new_audio, mix_sr) #TODO switch to compressed writing
         print("Wrote accompaniment for song " + mix_list[i])
     return new_audio_list
 
@@ -105,9 +106,9 @@ def getIKala(xml_path):
 
         mix_audio, mix_sr = librosa.load(mix.path, sr=None, mono=False)
         mix.path = mix_path
-        librosa.output.write_wav(mix_path, np.sum(mix_audio, axis=0), mix_sr)
-        librosa.output.write_wav(acc_path, mix_audio[0,:], mix_sr)
-        librosa.output.write_wav(voice_path, mix_audio[1, :], mix_sr)
+        sf.write(mix_path, np.sum(mix_audio, axis=0), mix_sr)
+        sf.write(acc_path, mix_audio[0,:], mix_sr)
+        sf.write(voice_path, mix_audio[1, :], mix_sr)
 
         voice = create_sample(mix.path, track.xpath(".//instrument[instrumentName='Voice']")[0])
         voice.path = voice_path
