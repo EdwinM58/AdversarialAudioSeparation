@@ -6,3 +6,5 @@ soundfile>=0.12.0
 lxml>=4.9.0
 mir-eval>=0.7
 sacred>=0.8.4
+musdb>=0.4.0
+stempeg>=0.2.3

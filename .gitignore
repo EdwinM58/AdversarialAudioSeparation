@@ -1,0 +1,25 @@
+# Datasets (large audio files)
+datasets/
+
+# Cached dataset structure
+dataset.pkl
+
+# Model checkpoints
+checkpoints/
+
+# Training logs
+logs/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# PDFs
+*.pdf
+
+# OS
+.DS_Store

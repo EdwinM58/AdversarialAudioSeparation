@@ -410,48 +410,42 @@ def dsd_100_experiment(model_config):
         print("Loaded dataset from pickle!")
     else:
         '''
-        Create dataset structure comprised of supervised, unsupervised, validation and test partitions
-        
-        # MODIFY BELOW TO INSERT DSD100, MedleyDB, CCMixter datasets.
-        # Each returned item from the dataset reading function (dsd_train, dsd_test, mdb, ccm, ikala) has to be of the following structure:
-        # List of 3 elements, each of which is a
-        #       List of Sample objects (instantiations of the Sample class - you need to create these as part of your dataset reading function). Each sample represents an audio track
-        # The list of 3 elements has to be in order: A list of mixtures, accompaniments and voices, in that order.
-        # Example: dsd_train[1] - List of Sample objects, each sample object represents an accompaniment audio file
-        # The lists have to be matched: The mixture audio at dsd_train[0][20] has to have its accompaniment at dsd_train[1][20] and voice at dsd_train[2][20]
-        # This means that for iKala and MedleyDB you need to generate separate vocal and accompaniment audio manually first!
-        # For MedleyDB, we mix together stems with/without vocals to generate the vocal and accompaniment track respectively, then add those signals together for the mixture track, to ensure mix=acc+voice
-_       '''
+        Create dataset structure comprised of supervised, unsupervised, validation and test partitions.
 
-        ###################### MODIFY BELOW
+        MUSDB18 (100 train / 50 test) is used as the supervised dataset.
+        MoisesDB (240 tracks) is split into thirds for unsupervised / validation / test.
 
-        dsd_train, dsd_test = Datasets.getDSDFilelist("DSD100.xml")
-        mdb = Datasets.getMedleyDB("MedleyDB.xml")
-        ccm = Datasets.getCCMixter("CCMixter.xml")
-        ikala = Datasets.getIKala("iKala.xml")
+        To switch to MUSDB18-HQ later, change is_wav=True and update the path.
+        '''
 
-        ###################### MODIFY ABOVE
+        # Load MUSDB18 - supervised dataset (set is_wav=True for MUSDB18-HQ)
+        musdb_train, musdb_test = Datasets.getMUSDB18(
+            os.path.join("datasets", "musdb18"),
+            is_wav=False
+        )
 
-        # Draw randomly from datasets
+        # Load MoisesDB - used for unsupervised, extra validation, and extra test data
+        # Comment this out if MoisesDB is not yet available
+        moisesdb_available = os.path.isdir(os.path.join("datasets", "moisesdb"))
+        if moisesdb_available:
+            mdb = Datasets.getMoisesDB(os.path.join("datasets", "moisesdb"))
+
+        # Build dataset partitions
         dataset = dict()
-        dataset["train_sup"] = dsd_train # 50 training tracks from DSD100 as supervised dataset
-        dataset["train_unsup"] = [list(), list(), list()] # Initialise unsupervised dateaset structure (fill up later)
-        dataset["valid"] = [dsd_test[0][:25], dsd_test[1][:25], dsd_test[2][:25]] # Validation and test contains 25 songs of DSD each, plus more (added later)
-        dataset["test"] = [dsd_test[0][25:], dsd_test[1][25:], dsd_test[2][25:]]
+        dataset["train_sup"] = musdb_train  # 100 MUSDB18 training tracks as supervised data
+        dataset["train_unsup"] = [list(), list(), list()]
 
-        # Go through MedleyDB, CCMixter, iKala
-        for ds in [mdb, ccm, ikala]:
-            num = len(ds[0]) // 3
-            # Split dataset in three equal-sized parts, and assign each to the unsupervised dataset, validation and test dataset respectively
+        # Split MUSDB18 test set: 25 for validation, 25 for test
+        dataset["valid"] = [musdb_test[0][:25], musdb_test[1][:25], musdb_test[2][:25]]
+        dataset["test"] = [musdb_test[0][25:], musdb_test[1][25:], musdb_test[2][25:]]
+
+        # If MoisesDB is available, split into thirds for unsupervised / validation / test
+        if moisesdb_available:
+            num = len(mdb[0]) // 3
             for i in range(3):
-                # Only add more examples to unsupervised and test sets, since in this experiment we care about preventing overfitting to the supervised dataset
-                dataset["train_unsup"][i].extend(ds[i][:num])
-                dataset["valid"][i].extend(ds[i][num:2 * num])
-                dataset["test"][i].extend(ds[i][2 * num:])
-
-        ### DELETE ALL OF THE ABOVE IF YOU WANT TO  USE YOUR OWN DATASETS OR PARTITIONING,
-        ### AND READ IN YOUR OWN DATASET OBJECTS ACCORDING TO THE RULES SHOWN ABOVE, THEN ASSIGN THEM TO THE DATASET DICT WITH
-        ### ENTRIES train_sup, valid and test, RESPECTIVELY.
+                dataset["train_unsup"][i].extend(mdb[i][:num])
+                dataset["valid"][i].extend(mdb[i][num:2 * num])
+                dataset["test"][i].extend(mdb[i][2 * num:])
 
         # Zip up all paired dataset partitions so we have (mixture, accompaniment, voice) tuples
         dataset["train_sup"] = list(zip(dataset["train_sup"][0], dataset["train_sup"][1], dataset["train_sup"][2]))
