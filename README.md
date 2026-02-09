@@ -20,7 +20,8 @@ This can prevent overfitting to the often small annotated dataset and makes use 
 
 - Python 3.11+
 - TensorFlow 2.x (GPU version recommended due to long running times)
-- ffmpeg must be installed and on your PATH for mp3 support
+- tf-keras (required for TF 2.16+ which ships Keras 3 by default)
+- ffmpeg must be installed and on your PATH for mp3 support and MUSDB18 stem reading
 
 Install dependencies:
 
@@ -36,56 +37,78 @@ pip install -e .
 
 ### Dataset preparation
 
-Before the code is runnable, the datasets need to be prepared and integrated into the data loading process.
-The simpler way to do this is to use the same datasets as used in the experiment in the paper, the alternative to use your own datasets and split them into custom partitions. Please see below and the Training.py code comments for guidance.
+The codebase uses [MUSDB18](https://sigsep.github.io/datasets/musdb.html) for supervised training and optionally [MoisesDB](https://github.com/moises-ai/moises-db) for semi-supervised training.
 
-When the code is run for the first time, it creates a dataset.pkl file containing the dataset structure after reading in the dataset, so that subsequent starts are much faster.
+When the code is run for the first time, it exports dataset stems to wav and creates a `dataset.pkl` cache, so that subsequent starts are much faster.
 
-#### Option 1: Recreate experiment from the paper
+#### MUSDB18 (required)
 
-If you want to recreate the experiment from the paper, download the datasets DSD100, MedleyDB, CCMixter, and iKala separately.
-Then edit the corresponding XML files provided in this repository (DSD100.xml etc.), so that the XML entry
+1. Download MUSDB18 (the compressed `.stem.mp4` version or the HQ uncompressed wav version)
+2. Place or symlink it at `datasets/MUSDB18`:
 
-``
-<databaseFolderPath>/mnt/daten/Datasets/DSD100</databaseFolderPath>
-``
+```bash
+mkdir -p datasets
+ln -s /path/to/musdb18 datasets/MUSDB18
+```
 
-contains the location of the root folder of the respective dataset. Save the file changes and then execute Training.py.
+The `musdb` Python package handles reading the `.stem.mp4` files. On first run, stems are exported to wav files alongside the originals. This provides 100 supervised training tracks and 50 test tracks (split 25 validation / 25 test).
 
-#### Option 2: Use your own data of choice
+To use the HQ wav version instead, change `is_wav=False` to `is_wav=True` in `Training.py`.
 
-To use your own datasets and dataset partitioning into supervised, unsupervised, validation and test sets, you can replace the data loading code in Training.py with a custom dataset loading function.
+#### MoisesDB (optional, for semi-supervised training)
 
-The only requirement to this function is its output format. The output should be a dictionary that maps the following strings to the respective dataset partitions:
+1. Request access at the [MoisesDB repository](https://github.com/moises-ai/moises-db)
+2. Place or symlink it at `datasets/MoisesDB`
+
+MoisesDB provides ~240 additional tracks used as unpaired data for the adversarial semi-supervised phase. If not available, training runs in supervised-only mode.
+
+#### Option: Use your own data
+
+To use custom datasets, replace the data loading code in `Training.py` with a function that returns a dictionary mapping:
 
 ```
-"train_sup" : sample_list
-"train_unsup" : [mix_list, source1_list, source2_list]
+"train_sup" : sample_list          # list of (mix, acc, voice) Sample tuples
+"train_unsup" : [mix_list, acc_list, voice_list]  # unpaired lists
 "train_valid" : sample_list
 "train_test" : sample_list
 ```
 
-A sample_list is a list with each element being a tuple containing three Sample objects. The order for these objects is mixture, source 1, source 2.
-You can initialise Sample objects with the constructor of the Sample class found in ``Sample.py``. Each represents an audio signal along with its metadata. This audio should be preferably in .wav format for fast on-the-fly reading, but other formats such as mp3 are also supported.
-
-The entry for `"train_unsup"` is different since recordings are not paired - instead, this entry is a list containing three lists. These contain mixtures, source1 and source2 Sample objects respectively. The lists can be of different length. since they are not paired.
+See `Sample.py` for the Sample class constructor.
 
 ### Configuration and hyperparameters
 
-You can configure settings and hyperparameters by modifying the ``model_config`` dictionary defined in the beginning of ``Training.py`` or using the commandline features of sacred by setting certain values when calling the script via commandline (see Sacred documentation).
+You can configure settings and hyperparameters by modifying the `model_config` dictionary defined in the beginning of `Training.py` or using the commandline features of sacred by setting certain values when calling the script via commandline (see Sacred documentation).
 
-Note that alpha and beta (hyperparameters from the paper) as loss weighting parameters are relatively important for good performance, tweaking these might be necessary. These are also editable in the ``model_config`` dictionary.
+Note that alpha and beta (hyperparameters from the paper) as loss weighting parameters are relatively important for good performance, tweaking these might be necessary. These are also editable in the `model_config` dictionary.
 
 ## Training
 
 The code is run by executing
 
-``
+```bash
 python Training.py
-``
+```
 
-It will train the same separator network first in a purely supervised way, and then using our semi-supervised adversarial approach. Each time, validation performance is measured regularly and early stopping is used, before the final test set performance is evaluated. For the semi-supervised approach, the additional data from ``dataset["train_unsup"]`` is used to improve performance.
+It will train the same separator network first in a purely supervised way, and then using our semi-supervised adversarial approach. Each time, validation performance is measured regularly and early stopping is used, before the final test set performance is evaluated. For the semi-supervised approach, the additional data from `dataset["train_unsup"]` is used to improve performance.
 
-Finally, BSS evaluation metrics are computed on the test dataset (SDR, SIR, SAR) - this saves the results in a pickled file along with the name of the dataset, so if you aim to use different datasets, the function needs to be extended slightly. 
+Finally, BSS evaluation metrics are computed on the test dataset (SDR, SIR, SAR) - this saves the results in a pickled file along with the name of the dataset, so if you aim to use different datasets, the function needs to be extended slightly.
 
 Logs are written continuously to the logs subfolder, so training can be supervised with Tensorboard. Checkpoint files of the model are created whenever validation performance is tested.
+
+## Inference
+
+After training, separate audio files using the standalone inference script:
+
+```bash
+# Auto-detect latest checkpoint
+python separate.py --input song.wav
+
+# Specify checkpoint and output directory
+python separate.py --input song.mp3 --output results/ --checkpoint checkpoints/542621_sup/542621_sup-1001
+```
+
+This outputs `<filename>_vocals.wav`, `<filename>_accompaniment.wav`, and a copy of the original in the output directory (default: `separated/`).
+
+## Web Application
+
+A companion web app for browser-based audio separation will be available at [harmony_split](../harmony_split/). It provides a React frontend with drag-and-drop upload and a Django backend that wraps the trained model for HTTP-based inference.
