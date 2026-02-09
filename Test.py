@@ -1,3 +1,5 @@
+import os
+os.environ['TF_USE_LEGACY_KERAS'] = '1'
 import pickle
 import numpy as np
 import tensorflow as tf
@@ -78,6 +80,12 @@ def bss_evaluate(model_config, dataset, load_model):
             db = "CCMixter"
         elif "MedleyDB" in filename:
             db = "MedleyDB"
+        elif "musdb18" in filename.lower() or "MUSDB18" in filename:
+            db = "MUSDB18"
+        elif "moisesdb" in filename.lower():
+            db = "MoisesDB"
+        else:
+            db = "Unknown"
         song_info = {"Title" : filename, "Database" : db}
 
         # Load mixture and pad it so that output sources have the same length after STFT/ISTFT

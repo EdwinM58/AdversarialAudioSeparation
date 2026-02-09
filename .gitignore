@@ -10,6 +10,16 @@ checkpoints/
 # Training logs
 logs/
 
+# Separated output
+separated/
+
+# Audio files
+*.wav
+*.mp3
+*.flac
+*.ogg
+*.m4a
+
 # Python
 __pycache__/
 *.pyc

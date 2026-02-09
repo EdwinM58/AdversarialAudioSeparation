@@ -206,8 +206,8 @@ def getMUSDB18(musdb_path, is_wav=False):
         vocals_path = os.path.join(track_dir, "vocals.wav")
         acc_path = os.path.join(track_dir, "accompaniment.wav")
 
-        # Export stems to wav on first run
-        if not os.path.exists(mix_path):
+        # Export stems to wav on first run (check all three exist)
+        if not (os.path.exists(mix_path) and os.path.exists(vocals_path) and os.path.exists(acc_path)):
             print(f"Exporting stems for: {track.name}")
             sf.write(mix_path, track.audio, track.rate)
             sf.write(vocals_path, track.targets['vocals'].audio, track.rate)

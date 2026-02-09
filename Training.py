@@ -1,10 +1,11 @@
 from sacred import Experiment
+import os
+os.environ['TF_USE_LEGACY_KERAS'] = '1'
 import tensorflow as tf
 import tensorflow.compat.v1 as tf1
 tf1.disable_v2_behavior()
 import threading
 import numpy as np
-import os
 
 import Datasets
 from Input import Input as Input
@@ -106,7 +107,7 @@ def test(model_config, audio_list, model_folder, load_model):
             run = False
 
     mean_mse_loss = total_loss / float(batches)
-    summary = tf1.Summary(value=[tf.Summary.Value(tag="test_loss", simple_value=mean_mse_loss)])
+    summary = tf1.Summary(value=[tf1.Summary.Value(tag="test_loss", simple_value=mean_mse_loss)])
     writer.add_summary(summary, global_step=_global_step)
 
     writer.flush()
@@ -353,6 +354,7 @@ def train(model_config, sup_dataset, model_folder, unsup_dataset=None, load_mode
 
     # Epoch finished - Save model
     print("Finished epoch!")
+    os.makedirs(model_config["model_base_dir"] + os.path.sep + model_folder, exist_ok=True)
     save_path = saver.save(sess, model_config["model_base_dir"] + os.path.sep + model_folder + os.path.sep + model_folder, global_step=int(_global_step))
 
     # Close session, clear computational graph

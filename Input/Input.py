@@ -1,3 +1,5 @@
+import os
+os.environ['TF_USE_LEGACY_KERAS'] = '1'
 import tensorflow as tf
 import tensorflow.compat.v1 as tf1
 tf1.disable_v2_behavior()
@@ -328,7 +330,7 @@ def audioFileToSpectrogram(audioIn, fftWindowSize=1024, hopSize=512, offset=0.0,
         audio = audioIn
 
     # Compute magnitude and phase
-    spectrogram = librosa.stft(audio, fftWindowSize, hopSize)
+    spectrogram = librosa.stft(audio, n_fft=fftWindowSize, hop_length=hopSize)
     magnitude, phase = librosa.core.magphase(spectrogram)
     phase = np.angle(phase) # from e^(1j * phi) to phi
     assert(np.max(magnitude) < fftWindowSize and np.min(magnitude) >= 0.0)
@@ -367,7 +369,7 @@ def norm(magnitude):
     :param magnitude: Input magnitude spectrogram
     :return: Log-normalized magnitude spectrogram
     '''
-    return tf.log1p(magnitude)
+    return tf.math.log1p(magnitude)
 
 def denorm(logmagnitude):
     '''
@@ -375,7 +377,7 @@ def denorm(logmagnitude):
     :param logmagnitude: Log-normalized magnitude spectrogram
     :return: Unnormalized magnitude spectrogram
     '''
-    return tf.expm1(logmagnitude)
+    return tf.math.expm1(logmagnitude)
 
 def spectrogramToAudioFile(magnitude, fftWindowSize, hopSize, phaseIterations=10, phase=None, length=None):
     '''
@@ -419,10 +421,10 @@ def reconPhase(magnitude, fftWindowSize, hopSize, phaseIterations=10, initPhase=
             else:
                 reconstruction = np.exp(initPhase * 1j) # e^(j*phase), so that angle => phase
         else:
-            reconstruction = librosa.stft(audio, fftWindowSize, hopSize)
+            reconstruction = librosa.stft(audio, n_fft=fftWindowSize, hop_length=hopSize)
         spectrum = magnitude * np.exp(1j * np.angle(reconstruction))
         if i == phaseIterations - 1:
-            audio = librosa.istft(spectrum, hopSize, length=length)
+            audio = librosa.istft(spectrum, hop_length=hopSize, length=length)
         else:
-            audio = librosa.istft(spectrum, hopSize)
+            audio = librosa.istft(spectrum, hop_length=hopSize)
     return audio
